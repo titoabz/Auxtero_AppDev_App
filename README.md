@@ -31,7 +31,27 @@ npm run web
 
 ## Build for Submission (Android APK/AAB)
 
-This Expo project uses EAS Build for release outputs.
+### Option A: Local Build (No EAS account required)
+
+From the project root:
+
+```bash
+npx expo prebuild --platform android
+cd android
+./gradlew assembleRelease
+```
+
+Generated APK path:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+You can submit that APK directly with your repository link.
+
+### Option B: EAS Build (requires Expo account)
+
+This option generates cloud builds and is useful if you want AAB without local Android toolchain setup.
 
 1. Install EAS CLI:
 
