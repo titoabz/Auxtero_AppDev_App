@@ -1,44 +1,22 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
+import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text } from 'react-native';
 
 import { useAppContext } from '../context/AppContext';
 import { RootStackParamList } from '../types';
 
 type DetailsProps = NativeStackScreenProps<RootStackParamList, 'Details'>;
 
-type Comment = {
-  id: number;
-  body: string;
-};
-
 export default function DetailsScreen({ route }: DetailsProps) {
   const { article } = route.params;
   const { isFavorite, toggleFavorite } = useAppContext();
-  const [comments, setComments] = useState<Comment[]>([]);
-
-  useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const response = await fetch(
-          `https://jsonplaceholder.typicode.com/posts/${article.id}/comments?_limit=3`
-        );
-        if (!response.ok) {
-          return;
-        }
-        const data: Comment[] = await response.json();
-        setComments(data);
-      } catch {
-      }
-    };
-
-    fetchComments();
-  }, [article.id]);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>{article.title}</Text>
+        <Text style={styles.meta}>
+          {article.source} • {new Date(article.publishedAt * 1000).toLocaleString()}
+        </Text>
         <Text style={styles.body}>{article.body}</Text>
 
         <Pressable style={styles.button} onPress={() => toggleFavorite(article.id)}>
@@ -47,16 +25,10 @@ export default function DetailsScreen({ route }: DetailsProps) {
           </Text>
         </Pressable>
 
-        <Text style={styles.sectionTitle}>Sample Comments from API</Text>
-        {comments.length === 0 ? (
-          <Text style={styles.commentText}>No comments loaded.</Text>
-        ) : (
-          comments.map((comment) => (
-            <Text key={comment.id} style={styles.commentText}>
-              • {comment.body}
-            </Text>
-          ))
-        )}
+        <Text style={styles.sectionTitle}>Source Link</Text>
+        <Pressable style={styles.linkButton} onPress={() => Linking.openURL(article.url)}>
+          <Text style={styles.linkText}>{article.url}</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -81,6 +53,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#374151',
   },
+  meta: {
+    color: '#6b7280',
+    fontSize: 13,
+  },
   button: {
     backgroundColor: '#2563eb',
     paddingVertical: 12,
@@ -98,8 +74,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
-  commentText: {
-    color: '#374151',
+  linkButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#eef2ff',
+  },
+  linkText: {
+    color: '#1d4ed8',
     lineHeight: 20,
   },
 });

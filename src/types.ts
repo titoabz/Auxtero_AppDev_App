@@ -1,8 +1,10 @@
 export type Article = {
-  userId: number;
-  id: number;
+  id: string;
   title: string;
   body: string;
+  url: string;
+  source: string;
+  publishedAt: number;
 };
 
 export type RootStackParamList = {

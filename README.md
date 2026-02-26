@@ -4,16 +4,16 @@ A basic React Native app (Expo + TypeScript) that satisfies the activity require
 
 - At least two interconnected screens (`Home` and `Details`)
 - Global state management (favorites via React Context)
-- Data fetched from an open REST API (`jsonplaceholder.typicode.com`)
+- Data fetched from an open REST API (`reddit.com/r/worldnews` JSON endpoint)
 
 ## Features
 
-- `Home` screen loads posts from:
-  - `https://jsonplaceholder.typicode.com/posts?_limit=20`
+- `Home` screen loads live posts from:
+  - `https://www.reddit.com/r/worldnews/new.json?limit=25`
+- Auto-refresh every 60 seconds + pull-to-refresh
 - Tap any post to open `Details`
 - `Details` screen allows saving/removing favorites (global state)
-- `Details` also fetches sample comments from:
-  - `https://jsonplaceholder.typicode.com/posts/{id}/comments?_limit=3`
+- `Details` shows source link and publication time for each live article
 
 ## Run Locally
 

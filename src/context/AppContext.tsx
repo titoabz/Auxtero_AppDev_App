@@ -1,15 +1,15 @@
 import { createContext, PropsWithChildren, useContext, useMemo, useState } from 'react';
 
 type AppContextValue = {
-  favorites: number[];
-  isFavorite: (id: number) => boolean;
-  toggleFavorite: (id: number) => void;
+  favorites: string[];
+  isFavorite: (id: string) => boolean;
+  toggleFavorite: (id: string) => void;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
 export function AppProvider({ children }: PropsWithChildren) {
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   const value = useMemo<AppContextValue>(
     () => ({
