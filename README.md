@@ -10,10 +10,16 @@ A basic React Native app (Expo + TypeScript) that satisfies the activity require
 
 - `Home` screen loads live posts from:
   - `https://www.reddit.com/r/worldnews/new.json?limit=25`
+- Optional Philippines feed:
+  - `https://www.reddit.com/r/Philippines/new.json?limit=25`
 - Auto-refresh every 60 seconds + pull-to-refresh
+- Built-in on-device summary generation for each article
+- Home supports `All / Favorites` filter so saved news can be viewed directly
 - Tap any post to open `Details`
 - `Details` screen allows saving/removing favorites (global state)
 - `Details` shows source link and publication time for each live article
+- When feed details are missing, `Details` tries to fetch a short source preview automatically
+- `Details` includes a tiny `Refresh preview` button for retrying source preview
 
 ## Run Locally
 

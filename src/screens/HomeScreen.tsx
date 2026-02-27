@@ -12,8 +12,10 @@ import {
 
 import { useAppContext } from '../context/AppContext';
 import { Article, RootStackParamList } from '../types';
+import { summarizeNews } from '../utils/summarizeNews';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type FeedMode = 'world' | 'philippines';
 
 type RedditListing = {
   data: {
@@ -30,7 +32,10 @@ type RedditListing = {
   };
 };
 
-const LIVE_NEWS_URL = 'https://www.reddit.com/r/worldnews/new.json?limit=25';
+const FEED_URLS: Record<FeedMode, string> = {
+  world: 'https://www.reddit.com/r/worldnews/new.json?limit=25',
+  philippines: 'https://www.reddit.com/r/Philippines/new.json?limit=25',
+};
 
 function toRelativeTime(unixSeconds: number) {
   const secondsAgo = Math.max(1, Math.floor(Date.now() / 1000) - unixSeconds);
@@ -57,9 +62,14 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [feedMode, setFeedMode] = useState<FeedMode>('world');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { favorites, isFavorite } = useAppContext();
+  const visibleArticles = showFavoritesOnly
+    ? articles.filter((item) => favorites.includes(item.id))
+    : articles;
 
   const fetchArticles = useCallback(async (showLoader: boolean) => {
     if (showLoader) {
@@ -70,7 +80,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
 
     setError(null);
     try {
-      const response = await fetch(LIVE_NEWS_URL, {
+      const response = await fetch(FEED_URLS[feedMode], {
         headers: {
           Accept: 'application/json',
         },
@@ -81,14 +91,19 @@ export default function HomeScreen({ navigation }: HomeProps) {
       }
 
       const json: RedditListing = await response.json();
-      const mapped: Article[] = json.data.children.map(({ data }) => ({
-        id: data.id,
-        title: data.title,
-        body: data.selftext?.trim() || 'No summary provided. Open source link in details.',
-        url: data.url,
-        source: data.subreddit_name_prefixed,
-        publishedAt: data.created_utc,
-      }));
+      const mapped: Article[] = json.data.children.map(({ data }) => {
+        const rawBody = data.selftext?.trim() || '';
+
+        return {
+          id: data.id,
+          title: data.title,
+          body: rawBody,
+          summary: summarizeNews(data.title, rawBody),
+          url: data.url,
+          source: data.subreddit_name_prefixed,
+          publishedAt: data.created_utc,
+        };
+      });
 
       setArticles(mapped);
       setLastUpdated(new Date());
@@ -98,7 +113,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [feedMode]);
 
   useEffect(() => {
     fetchArticles(true);
@@ -114,10 +129,51 @@ export default function HomeScreen({ navigation }: HomeProps) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Live World News</Text>
+        <View style={styles.feedRow}>
+          <Pressable
+            style={[styles.feedButton, feedMode === 'world' && styles.feedButtonActive]}
+            onPress={() => setFeedMode('world')}
+          >
+            <Text style={[styles.feedButtonText, feedMode === 'world' && styles.feedButtonTextActive]}>
+              World
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.feedButton, feedMode === 'philippines' && styles.feedButtonActive]}
+            onPress={() => setFeedMode('philippines')}
+          >
+            <Text
+              style={[
+                styles.feedButtonText,
+                feedMode === 'philippines' && styles.feedButtonTextActive,
+              ]}
+            >
+              Philippines
+            </Text>
+          </Pressable>
+        </View>
         <Text style={styles.meta}>Favorites: {favorites.length}</Text>
         <Text style={styles.meta}>
           {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Waiting for first update...'}
         </Text>
+        <View style={styles.filterRow}>
+          <Pressable
+            style={[styles.filterButton, !showFavoritesOnly && styles.filterButtonActive]}
+            onPress={() => setShowFavoritesOnly(false)}
+          >
+            <Text style={[styles.filterButtonText, !showFavoritesOnly && styles.filterButtonTextActive]}>
+              All
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, showFavoritesOnly && styles.filterButtonActive]}
+            onPress={() => setShowFavoritesOnly(true)}
+          >
+            <Text style={[styles.filterButtonText, showFavoritesOnly && styles.filterButtonTextActive]}>
+              Favorites
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -131,11 +187,18 @@ export default function HomeScreen({ navigation }: HomeProps) {
         </View>
       ) : (
         <FlatList
-          data={articles}
+          data={visibleArticles}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshing={refreshing}
           onRefresh={() => fetchArticles(false)}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              {showFavoritesOnly
+                ? 'No favorite news yet. Tap "Save to favorites" in details first.'
+                : 'No news available right now.'}
+            </Text>
+          }
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate('Details', { article: item })}
@@ -143,7 +206,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
             >
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text numberOfLines={2} style={styles.cardBody}>
-                {item.body}
+                {item.summary}
               </Text>
               <Text style={styles.cardMeta}>
                 {item.source} • {toRelativeTime(item.publishedAt)}
@@ -178,10 +241,66 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: '#4b5563',
   },
+  feedRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  feedButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+  },
+  feedButtonActive: {
+    backgroundColor: '#0f766e',
+    borderColor: '#0f766e',
+  },
+  feedButtonText: {
+    color: '#334155',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  feedButtonTextActive: {
+    color: '#ffffff',
+  },
+  filterRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  filterButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+  },
+  filterButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  filterButtonText: {
+    color: '#334155',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  filterButtonTextActive: {
+    color: '#ffffff',
+  },
   listContent: {
     padding: 16,
     paddingTop: 8,
     gap: 12,
+  },
+  emptyText: {
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 24,
+    fontStyle: 'italic',
   },
   card: {
     backgroundColor: '#ffffff',
